@@ -35,7 +35,7 @@ namespace Broker
             try
             {
                 foreach (var subscriber in _subscriberList)
-                    subscriber.SendMessage(messageContent);
+                    subscriber.SendMessage($"[{Name}]: {messageContent}");
 
                 return true;
             }
