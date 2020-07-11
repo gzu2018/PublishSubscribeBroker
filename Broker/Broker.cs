@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Broker
 {
@@ -17,6 +18,9 @@ namespace Broker
             {
                 var subscriber = GetSubscriberById(subscriberID);
                 var topic = GetTopicFromString(topicName);
+
+                if (topic.ContainsSubscriber(subscriber))
+                    return false;
 
                 topic.AddSubscriber(subscriber);
 
@@ -35,6 +39,9 @@ namespace Broker
             {
                 var subscriber = GetSubscriberById(subscriberID);
                 var topic = GetTopicFromString(topicName);
+
+                if (!topic.ContainsSubscriber(subscriber))
+                    return false;
 
                 topic.RemoveSubscriber(subscriber);
 
@@ -74,12 +81,12 @@ namespace Broker
 
         public static bool RemoveTopic(string topicName)
         {
-            return _topicList.RemoveAll(topic => topic.Name.Equals(topicName, StringComparison.InvariantCultureIgnoreCase)) != 0;
+            return _topicList.RemoveAll(topic => topic.Name.Equals(topicName, StringComparison.InvariantCultureIgnoreCase)) > 0;
         }
 
         public static int AddSubscriberToMap(Subscriber sub)
         {
-            int assignedID = _subscriberCount;
+            var assignedID = _subscriberCount;
             _subscriberMap[assignedID] = sub;
             _subscriberCount++;
             return assignedID;
@@ -129,21 +136,17 @@ namespace Broker
             }
         }
 
-        public static string GetTopicNamesAsString()
+        public static async Task PeriodicallyRemoveInactiveSubscribersTask(int delayInSeconds, bool writeToConsole)
         {
-            return String.Join(", ", GetTopicNamesAsStringArray());
-        }
-
-        public static string GetSubscriberActiveTopicsAsString(int id)
-        {
-            return String.Join(", ", GetSubscriberActiveTopicsAsStringArray(id));
-        }
-
-        public static void RemoveInactiveSubscriberConnections()
-        {
-            foreach (var disconnectedSubscriber in _subscriberMap.Where(entry => !entry.Value.IsSocketStillConnected()).ToList())
+            while (true)
             {
-                RemoveSubscriberFromMap(disconnectedSubscriber.Key);
+                Task.Run(() =>
+                {
+                    var removedConnectionCount = RemoveInactiveSubscriberConnections();
+                    if(writeToConsole)
+                        Console.WriteLine($"{removedConnectionCount} inactive subscribers have been removed");
+                });
+                await Task.Delay(TimeSpan.FromSeconds(delayInSeconds));
             }
         }
 
@@ -176,6 +179,18 @@ namespace Broker
             {
                 return false;
             }
+        }
+
+        private static int RemoveInactiveSubscriberConnections()
+        {
+            var count = 0;
+            foreach (var disconnectedSubscriber in _subscriberMap.Where(entry => !entry.Value.IsSocketStillConnected()).ToList())
+            {
+                RemoveSubscriberFromMap(disconnectedSubscriber.Key);
+                count++;
+            }
+
+            return count;
         }
     }
 }

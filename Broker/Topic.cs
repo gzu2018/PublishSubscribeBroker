@@ -7,7 +7,7 @@ namespace Broker
     public class Topic
     {
         public string Name { get; }
-        private List<Subscriber> _subscriberList;
+        private readonly List<Subscriber> _subscriberList;
 
         public Topic(string topicName)
         {

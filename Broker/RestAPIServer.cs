@@ -3,11 +3,11 @@ using Newtonsoft.Json;
 
 namespace Broker
 {
-    public class RestAPIServer : NancyModule
+    public class RestApiServer : NancyModule
     {
-        public RestAPIServer()
+        public RestApiServer()
         {
-            EnableCORS();
+            EnableCors();
             CreateTopicRequest();
             RemoveTopicRequest();
             GetAllTopicNamesRequest();
@@ -17,11 +17,11 @@ namespace Broker
             GetSubscriberActiveTopicsRequest();
         }
 
-        private void EnableCORS()
+        private void EnableCors()
         {
             After.AddItemToEndOfPipeline((ctx) =>
             {
-                ctx.Response.WithHeader("Access-Control-Allow-Origin", "*") // Change with implementation
+                ctx.Response.WithHeader("Access-Control-Allow-Origin", "*") // Set to allow all, change with implementation
                     .WithHeader("Access-Control-Allow-Methods", "POST,GET,DELETE")
                     .WithHeader("Access-Control-Allow-Headers", "Accept, Origin, Content-type, X-Requested-With")
                     .WithHeader("Access-Control-Allow-Credentials", "true");

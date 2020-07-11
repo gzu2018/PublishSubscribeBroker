@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Net;
-using System.Net.Sockets;
-using System.Threading.Tasks;
 using Nancy.Hosting.Self;
 
 namespace Broker
@@ -10,28 +8,19 @@ namespace Broker
     {
         static void Main(string[] args)
         {
-            // make sure you create a reservation
-            // netsh http add urlacl url=http://+:8888/ user=DOMAIN\username
+            // Create a reservation for Nancy or else Rest server will not start up
+            // Windows CMD: netsh http add urlacl url=http://+:8888/ user=DOMAIN\username
 
-            using var RESTServer = new NancyHost(new Uri("http://localhost:8888"));
-            RESTServer.Start();
+            using var restServer = new NancyHost(new Uri("http://localhost:8888"));
+            restServer.Start();
             Console.WriteLine("Rest API Server Running on http://localhost:8888");
 
             var socketServer = new SocketServer();
-            socketServer.StartServer(IPAddress.Loopback, 6666);
+            socketServer.StartServer(IPAddress.Loopback, 8080);
 
-            RemoveInactiveSubscriberConnectionTask(10);
+            Broker.PeriodicallyRemoveInactiveSubscribersTask(30, false);
 
             Console.ReadLine();
-        }
-
-        private static async Task RemoveInactiveSubscriberConnectionTask(int delayInSeconds)
-        {
-            while (true)
-            {
-                Task.Run(() => Broker.RemoveInactiveSubscriberConnections());
-                await Task.Delay(TimeSpan.FromSeconds(delayInSeconds));
-            }
         }
     }
 }
