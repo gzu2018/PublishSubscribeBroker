@@ -23,7 +23,8 @@ namespace Broker
             {
                 ctx.Response.WithHeader("Access-Control-Allow-Origin", "*") // Change with implementation
                     .WithHeader("Access-Control-Allow-Methods", "POST,GET,DELETE")
-                    .WithHeader("Access-Control-Allow-Headers", "Accept, Origin, Content-type");
+                    .WithHeader("Access-Control-Allow-Headers", "Accept, Origin, Content-type, X-Requested-With")
+                    .WithHeader("Access-Control-Allow-Credentials", "true");
             });
         }
 
@@ -40,7 +41,7 @@ namespace Broker
 
         private void RemoveTopicRequest()
         {
-            Delete("/deleteTopic", param =>
+            Post("/deleteTopic", param =>
             {
                 var topicName = GetQueryValueFromKey("topicName");
                 if (topicName.Length > 0 && Broker.RemoveTopic(topicName))
@@ -89,7 +90,7 @@ namespace Broker
 
         private void SubscriberUnsubscribeToTopicRequest()
         {
-            Delete("/unsubscribeToTopic", param =>
+            Post("/unsubscribeToTopic", param =>
             {
                 var subscriberIDString = GetQueryValueFromKey("id");
                 var topicName = GetQueryValueFromKey("topicName");
@@ -125,19 +126,19 @@ namespace Broker
 
         private string GetSuccessJSONMessage(string successMsg)
         {
-            var result = new { success = "true", message=successMsg};
+            var result = new { success = true, message=successMsg};
             return JsonConvert.SerializeObject(result);
         }
 
         private string GetFailureJSONMessage(string errorMsg)
         {
-            var result = new { success = "false", message=errorMsg };
+            var result = new { success = false, message=errorMsg };
             return JsonConvert.SerializeObject(result);
         }
 
         private string GetSuccessJSONArray(string[] array)
         {
-            var result = new { success = "true", message = array };
+            var result = new { success = true, message = array };
             return JsonConvert.SerializeObject(result);
         }
 

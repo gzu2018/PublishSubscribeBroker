@@ -77,11 +77,12 @@ namespace Broker
             return _topicList.RemoveAll(topic => topic.Name.Equals(topicName, StringComparison.InvariantCultureIgnoreCase)) != 0;
         }
 
-        public static bool AddSubscriberToMap(Subscriber sub)
+        public static int AddSubscriberToMap(Subscriber sub)
         {
-            int assignedID = _subscriberCount++;
+            int assignedID = _subscriberCount;
             _subscriberMap[assignedID] = sub;
-            return true;
+            _subscriberCount++;
+            return assignedID;
         }
 
         public static bool RemoveSubscriberFromMap(int id)

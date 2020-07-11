@@ -22,7 +22,9 @@ namespace Broker
             {
                 var receivedSocket = _serverSocket.EndAccept(AR);
                 Console.WriteLine("Subscriber connected");
-                Broker.AddSubscriberToMap(new Subscriber(receivedSocket));
+                var newSubscriber = new Subscriber(receivedSocket);
+                var id = Broker.AddSubscriberToMap(newSubscriber);
+                newSubscriber.SendMessage(id.ToString());
                 _serverSocket.BeginAccept(AcceptCallback, null);
             }
             catch (SocketException exp)
