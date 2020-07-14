@@ -10,6 +10,7 @@ namespace Broker
         private static List<Topic> _topicList = new List<Topic>();
         private static Dictionary<int, Subscriber> _subscriberMap = new Dictionary<int, Subscriber>();
 
+        private static int _publisherCount = 0;
         private static int _subscriberCount = 0;
 
         public static bool AddSubscriberToTopic(int subscriberID, string topicName)
@@ -54,11 +55,15 @@ namespace Broker
             }
         }
 
-        public static bool SendMessage(string topicName, string messageContent)
+        public static bool SendMessage(int publisherID, string topicName, string messageContent)
         {
             try
             {
                 var topic = GetTopicFromString(topicName);
+
+                if (topic.ID != publisherID)
+                    return false;
+
                 topic.SendMessageToSubscribers(messageContent);
                 return true;
             }
@@ -69,19 +74,24 @@ namespace Broker
             }
         }
 
-        public static bool AddTopic(string topicName)
+        public static bool AddTopic(int publisherID, string topicName)
         {
-            if (DoesTopicNameExist(topicName))
+            if (DoesTopicNameExist(topicName) || publisherID < 0 || publisherID >= _publisherCount)
                 return false;
 
-            var topic = new Topic(topicName);
+            var topic = new Topic(publisherID, topicName);
             _topicList.Add(topic);
             return true;
         }
 
-        public static bool RemoveTopic(string topicName)
+        public static bool RemoveTopic(int publisherID, string topicName)
         {
-            return _topicList.RemoveAll(topic => topic.Name.Equals(topicName, StringComparison.InvariantCultureIgnoreCase)) > 0;
+            return _topicList.RemoveAll(topic => topic.Name.Equals(topicName, StringComparison.InvariantCultureIgnoreCase) && topic.ID == publisherID) > 0;
+        }
+
+        public static int AddNewPublisher()
+        {
+            return _publisherCount++;
         }
 
         public static int AddSubscriberToMap(Subscriber sub)
@@ -112,6 +122,22 @@ namespace Broker
             var count = 0;
             _topicList.ForEach(topic => topicNames[count++] = topic.Name);
             return topicNames;
+        }
+
+        public static string[] GetPublisherActiveTopicsAsStringArray(int id)
+        {
+            if(id < 0 || id >= _publisherCount)
+                return new string[0];
+
+            var publisherTopics = new List<String>();
+
+            foreach (var topic in _topicList)
+            {
+                if(topic.ID == id)
+                    publisherTopics.Add(topic.Name);
+            }
+
+            return publisherTopics.ToArray();
         }
 
         public static string[] GetSubscriberActiveTopicsAsStringArray(int id)

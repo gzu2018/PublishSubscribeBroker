@@ -8,12 +8,14 @@ namespace Broker
         public RestApiServer()
         {
             EnableCors();
+            InitializePublisherRequest();
             CreateTopicRequest();
             RemoveTopicRequest();
             GetAllTopicNamesRequest();
             PublisherPublishTopicRequest();
             SubscriberSubscribeToTopicRequest();
             SubscriberUnsubscribeToTopicRequest();
+            GetPublisherActiveTopicsRequest();
             GetSubscriberActiveTopicsRequest();
         }
 
@@ -28,13 +30,27 @@ namespace Broker
             });
         }
 
+        private void InitializePublisherRequest()
+        {
+            Get("/initializePublisher", param => GetSuccessJSONInt(Broker.AddNewPublisher()));
+        }
+
         private void CreateTopicRequest()
         {
             Post("/createTopic", param =>
             {
+                var publisherIDString = GetQueryValueFromKey("id");
                 var topicName = GetQueryValueFromKey("topicName");
-                if (topicName.Length > 0 && Broker.AddTopic(topicName))
-                    return GetSuccessJSONMessage($"Topic {topicName} successfully added");
+
+                int publisherID;
+                if (int.TryParse(publisherIDString, out publisherID))
+                {
+                    if (topicName.Length > 0 && Broker.AddTopic(publisherID, topicName))
+                    {
+                        return GetSuccessJSONMessage($"Topic {topicName} successfully added");
+                    }
+                }
+
                 return GetFailureJSONMessage($"Topic {topicName} could not be added");
             });
         }
@@ -43,9 +59,18 @@ namespace Broker
         {
             Post("/deleteTopic", param =>
             {
+                var publisherIDString = GetQueryValueFromKey("id");
                 var topicName = GetQueryValueFromKey("topicName");
-                if (topicName.Length > 0 && Broker.RemoveTopic(topicName))
-                    return GetSuccessJSONMessage($"Topic {topicName} successfully removed");
+
+                int publisherID;
+                if (int.TryParse(publisherIDString, out publisherID))
+                {
+                    if (topicName.Length > 0 && Broker.RemoveTopic(publisherID, topicName))
+                    {
+                        return GetSuccessJSONMessage($"Topic {topicName} successfully removed");
+                    }
+                }
+
                 return GetFailureJSONMessage($"Topic {topicName} could not be removed");
             });
         }
@@ -59,11 +84,20 @@ namespace Broker
         {
             Post("/publishMessage", param =>
             {
+                var publisherIDString = GetQueryValueFromKey("id");
                 var topicName = GetQueryValueFromKey("topicName");
                 var messageContent = GetQueryValueFromKey("messageContent");
 
-                if (topicName.Length > 0 && messageContent.Length > 0 && Broker.SendMessage(topicName, messageContent))
-                    return GetSuccessJSONMessage($"Message to topic {topicName} was successfully published");
+                int publisherID;
+                if (int.TryParse(publisherIDString, out publisherID))
+                {
+                    if (topicName.Length > 0 && messageContent.Length > 0 &&
+                        Broker.SendMessage(publisherID, topicName, messageContent))
+                    {
+                        return GetSuccessJSONMessage($"Message to topic {topicName} was successfully published");
+                    }
+                }
+
                 return GetFailureJSONMessage($"Message to topic {topicName} could not be published");
             });
         }
@@ -108,6 +142,22 @@ namespace Broker
             });
         }
 
+        private void GetPublisherActiveTopicsRequest()
+        {
+            Get("/getPublisherActiveTopics", param =>
+            {
+                var publisherIDString = GetQueryValueFromKey("id");
+
+                int publisherID;
+                if (int.TryParse(publisherIDString, out publisherID))
+                {
+                    return GetSuccessJSONArray(Broker.GetPublisherActiveTopicsAsStringArray(publisherID));
+                }
+
+                return GetFailureJSONMessage("Publisher ID entered is not a valid integer");
+            });
+        }
+
         private void GetSubscriberActiveTopicsRequest()
         {
             Get("/getSubscriberActiveTopics", param =>
@@ -126,19 +176,25 @@ namespace Broker
 
         private string GetSuccessJSONMessage(string successMsg)
         {
-            var result = new { success = true, message=successMsg};
+            var result = new { success = true, message = successMsg };
             return JsonConvert.SerializeObject(result);
         }
 
         private string GetFailureJSONMessage(string errorMsg)
         {
-            var result = new { success = false, message=errorMsg };
+            var result = new { success = false, message = errorMsg };
             return JsonConvert.SerializeObject(result);
         }
 
         private string GetSuccessJSONArray(string[] array)
         {
             var result = new { success = true, message = array };
+            return JsonConvert.SerializeObject(result);
+        }
+
+        private string GetSuccessJSONInt(int integer)
+        {
+            var result = new { success = true, message = integer };
             return JsonConvert.SerializeObject(result);
         }
 

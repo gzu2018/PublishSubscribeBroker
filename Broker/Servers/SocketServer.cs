@@ -37,6 +37,10 @@ namespace Broker
             {
                 Console.WriteLine($"[ERR] {exp.Message}");
             }
+            catch (IndexOutOfRangeException exp)
+            {
+                Console.WriteLine($"[ERR] {exp.Message}");
+            }
             finally
             {
                 if (_serverSocket != null && _serverSocket.IsBound)

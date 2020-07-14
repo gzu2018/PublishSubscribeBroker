@@ -16,7 +16,7 @@ namespace Broker
             Console.WriteLine("Rest API Server Running on http://localhost:8888");
 
             var socketServer = new SocketServer();
-            socketServer.StartServer(IPAddress.Loopback, 8080);
+            socketServer.StartServer(IPAddress.Any, 8080);
 
             Broker.PeriodicallyRemoveInactiveSubscribersTask(30, false);
 
