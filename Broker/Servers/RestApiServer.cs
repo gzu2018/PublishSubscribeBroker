@@ -17,6 +17,7 @@ namespace Broker
             SubscriberUnsubscribeToTopicRequest();
             GetPublisherActiveTopicsRequest();
             GetSubscriberActiveTopicsRequest();
+            RemoveAllSubscriberTopicsByIDRequest();
         }
 
         private void EnableCors()
@@ -171,6 +172,28 @@ namespace Broker
                 }
 
                 return GetFailureJSONMessage("Subscriber ID entered is not a valid integer");
+            });
+        }
+
+        private void RemoveAllSubscriberTopicsByIDRequest()
+        {
+            Post("/removeAllSubscriberActiveTopics", param =>
+            {
+                var publisherIDString = GetQueryValueFromKey("id");
+
+                int publisherID;
+                if (int.TryParse(publisherIDString, out publisherID))
+                {
+                    if (Broker.RemoveAllTopicsOwnedBySubscriber(publisherID))
+                    {
+                      return GetSuccessJSONMessage($"All topics owned by publisher {publisherID} successfully removed");
+                    }
+
+                    return GetFailureJSONMessage(
+                        $"Topics owned by publisher {publisherID} could not be removed. (Perhaps invalid ID?)");
+                }
+
+                return GetFailureJSONMessage("Publisher ID entered is not a valid integer");
             });
         }
 

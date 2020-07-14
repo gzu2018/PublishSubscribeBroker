@@ -162,6 +162,18 @@ namespace Broker
             }
         }
 
+        public static bool RemoveAllTopicsOwnedBySubscriber(int id)
+        {
+            for (var k = _topicList.Count - 1; k >= 0; k--)
+            {
+                var topic = _topicList[k];
+                if (topic.ID == id)
+                    _topicList.RemoveAt(k);
+            }
+
+            return true;
+        }
+
         public static async Task PeriodicallyRemoveInactiveSubscribersTask(int delayInSeconds, bool writeToConsole)
         {
             while (true)
