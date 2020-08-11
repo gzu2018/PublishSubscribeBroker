@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Broker-UPDATED\\Broker\\Broker\\Broker.csproj": {}
+    "C:\\Users\\Corbin's PC\\source\\repos\\pubsubGuangze\\back-end\\Broker\\Broker.csproj": {}
   },
   "projects": {
-    "D:\\Broker-UPDATED\\Broker\\Broker\\Broker.csproj": {
+    "C:\\Users\\Corbin's PC\\source\\repos\\pubsubGuangze\\back-end\\Broker\\Broker.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Broker-UPDATED\\Broker\\Broker\\Broker.csproj",
+        "projectUniqueName": "C:\\Users\\Corbin's PC\\source\\repos\\pubsubGuangze\\back-end\\Broker\\Broker.csproj",
         "projectName": "Broker",
-        "projectPath": "D:\\Broker-UPDATED\\Broker\\Broker\\Broker.csproj",
-        "packagesPath": "C:\\Users\\Guangze\\.nuget\\packages\\",
-        "outputPath": "D:\\Broker-UPDATED\\Broker\\Broker\\obj\\",
+        "projectPath": "C:\\Users\\Corbin's PC\\source\\repos\\pubsubGuangze\\back-end\\Broker\\Broker.csproj",
+        "packagesPath": "C:\\Users\\Corbin's PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Corbin's PC\\source\\repos\\pubsubGuangze\\back-end\\Broker\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\Guangze\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Corbin's PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [

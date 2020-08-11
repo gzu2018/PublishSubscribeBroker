@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 
@@ -8,12 +9,9 @@ namespace Broker
     {
         private readonly Socket _socket;
 
-        public Subscriber(Socket socket)
-        {
-            _socket = socket;
-        }
+				public Subscriber( Socket socket ) => _socket = socket;
 
-        public void SendMessage(string messageContent)
+				public void SendMessage(string messageContent)
         {
             try
             {
@@ -26,28 +24,19 @@ namespace Broker
             }
         }
 
-        public bool IsSocketStillConnected()
+        public bool IsSocketStillConnected() => (!_socket.Poll(1000, SelectMode.SelectRead) || _socket.Available != 0) && _socket.Connected;
+
+				private void SendCallback( IAsyncResult AR ) => _ = _socket.EndSend(AR);
+
+				// Generates encoded frames for WebSocket protocol. Found on StackOverflow: https://stackoverflow.com/questions/10200910/creating-a-hello-world-websocket-example
+
+				private static byte[] GetFrameFromString(string Message, EOpcodeType Opcode = EOpcodeType.Text)
         {
-            var part1 = _socket.Poll(1000, SelectMode.SelectRead);
-            var part2 = (_socket.Available == 0);
-            return !((part1 && part2) || !_socket.Connected);
-        }
+            var bytesRaw = Encoding.Default.GetBytes(Message);
+            var frame = new byte[10];
 
-        private void SendCallback(IAsyncResult AR)
-        {
-            _socket.EndSend(AR);
-        }
-
-        // Generates encoded frames for WebSocket protocol. Found on StackOverflow: https://stackoverflow.com/questions/10200910/creating-a-hello-world-websocket-example
-
-        private static byte[] GetFrameFromString(string Message, EOpcodeType Opcode = EOpcodeType.Text)
-        {
-            byte[] response;
-            byte[] bytesRaw = Encoding.Default.GetBytes(Message);
-            byte[] frame = new byte[10];
-
-            int indexStartRawData = -1;
-            int length = bytesRaw.Length;
+            int indexStartRawData;
+            var length = bytesRaw.Length;
 
             frame[0] = (byte)(128 + (int)Opcode);
             if (length <= 125)
@@ -57,14 +46,14 @@ namespace Broker
             }
             else if (length >= 126 && length <= 65535)
             {
-                frame[1] = (byte)126;
+                frame[1] = 126; // Bytes can hold numbers up to 127, so anything <= 127 doesn't need to be casted
                 frame[2] = (byte)((length >> 8) & 255);
                 frame[3] = (byte)(length & 255);
                 indexStartRawData = 4;
             }
             else
             {
-                frame[1] = (byte)127;
+                frame[1] = 127;
                 frame[2] = (byte)((length >> 56) & 255);
                 frame[3] = (byte)((length >> 48) & 255);
                 frame[4] = (byte)((length >> 40) & 255);
@@ -77,21 +66,10 @@ namespace Broker
                 indexStartRawData = 10;
             }
 
-            response = new byte[indexStartRawData + length];
+            var response = new byte[indexStartRawData + length];
 
-            int i, reponseIdx = 0;
-
-            for (i = 0; i < indexStartRawData; i++)
-            {
-                response[reponseIdx] = frame[i];
-                reponseIdx++;
-            }
-
-            for (i = 0; i < length; i++)
-            {
-                response[reponseIdx] = bytesRaw[i];
-                reponseIdx++;
-            }
+						frame.Take(indexStartRawData).ToArray().CopyTo(response, 0);
+						bytesRaw.CopyTo(response, indexStartRawData);
 
             return response;
         }

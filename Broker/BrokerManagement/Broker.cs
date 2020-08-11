@@ -7,8 +7,8 @@ namespace Broker
 {
     public static class Broker
     {
-        private static List<Topic> _topicList = new List<Topic>();
-        private static Dictionary<int, Subscriber> _subscriberMap = new Dictionary<int, Subscriber>();
+        private static readonly List<Topic> _topicList = new List<Topic>();
+        private static readonly Dictionary<int, Subscriber> _subscriberMap = new Dictionary<int, Subscriber>();
 
         private static int _publisherCount = 0;
         private static int _subscriberCount = 0;
@@ -20,10 +20,10 @@ namespace Broker
                 var subscriber = GetSubscriberById(subscriberID);
                 var topic = GetTopicFromString(topicName);
 
-                if (topic.ContainsSubscriber(subscriber))
-                    return false;
+								// If you converted the list to a set, then you could just add the new item without checking if it already contained it, as a set won't allow duplicate items
+                if (topic.SubscriberList.Contains(subscriber)) return false;
 
-                topic.AddSubscriber(subscriber);
+                topic.SubscriberList.Add(subscriber);
 
                 return true;
             }
@@ -38,16 +38,15 @@ namespace Broker
         {
             try
             {
-                var subscriber = GetSubscriberById(subscriberID);
+								var subscriber = GetSubscriberById(subscriberID);
                 var topic = GetTopicFromString(topicName);
 
-                if (!topic.ContainsSubscriber(subscriber))
-                    return false;
+                return topic.SubscriberList.Remove(subscriber);	// list.Remove will return false if the item does not exist in the list, so you don't need to add the manual check to see if the item is in the list
 
-                topic.RemoveSubscriber(subscriber);
+								// You could one-line this try section if you wanted
+								//return GetTopicFromString(topicName).RemoveSubscriber(GetSubscriberById(subscriberID));
 
-                return true;
-            }
+						}
             catch (ArgumentNullException exp)
             {
                 Console.WriteLine($"[ERR] {exp.Message}");
@@ -61,11 +60,9 @@ namespace Broker
             {
                 var topic = GetTopicFromString(topicName);
 
-                if (topic.ID != publisherID)
-                    return false;
+                if (topic.ID != publisherID) return false;
 
-                topic.SendMessageToSubscribers(messageContent);
-                return true;
+                return topic.SendMessageToSubscribers(messageContent); // You weren't handling this SendMessage... method returning false because of a socket exception
             }
             catch (ArgumentNullException exp)
             {
@@ -76,104 +73,38 @@ namespace Broker
 
         public static bool AddTopic(int publisherID, string topicName)
         {
-            if (DoesTopicNameExist(topicName) || publisherID < 0 || publisherID >= _publisherCount)
-                return false;
+            if (DoesTopicNameExist(topicName) || publisherID < 0 || publisherID >= _publisherCount) return false;
 
-            var topic = new Topic(publisherID, topicName);
-            _topicList.Add(topic);
+            _topicList.Add(new Topic(publisherID, topicName));
             return true;
         }
 
-        public static bool RemoveTopic(int publisherID, string topicName)
-        {
-            return _topicList.RemoveAll(topic => topic.Name.Equals(topicName, StringComparison.InvariantCultureIgnoreCase) && topic.ID == publisherID) > 0;
-        }
+				public static bool RemoveTopic( int publisherID, string topicName ) => _topicList.RemoveAll(topic => topic.Name.Equals(topicName, StringComparison.InvariantCultureIgnoreCase) && topic.ID == publisherID) > 0;
 
-        public static int AddNewPublisher()
-        {
-            return _publisherCount++;
-        }
+				public static int AddNewPublisher() => _publisherCount++;
 
-        public static int AddSubscriberToMap(Subscriber sub)
+				public static int AddSubscriberToMap(Subscriber sub)
         {
-            var assignedID = _subscriberCount;
-            _subscriberMap[assignedID] = sub;
-            _subscriberCount++;
-            return assignedID;
-        }
-
-        public static bool RemoveSubscriberFromMap(int id)
-        {
-            try
-            {
-                _subscriberMap.Remove(id);
-                return true;
-            }
-            catch (ArgumentNullException exp)
-            {
-                Console.WriteLine($"[ERR] {exp.Message}");
-                return false;
-            }
+            _subscriberMap[_subscriberCount] = sub;
+            return _subscriberCount++;
         }
         
-        public static string[] GetTopicNamesAsStringArray()
-        {
-            var topicNames = new string[_topicList.Count];
-            var count = 0;
-            _topicList.ForEach(topic => topicNames[count++] = topic.Name);
-            return topicNames;
-        }
+				// This can be one-lined. A lot of the IEnumerables can be converted into other IEnumberables
+        public static string[] GetTopicNamesAsStringArray() => _topicList.Select(topic => topic.Name).ToArray();
 
-        public static string[] GetPublisherActiveTopicsAsStringArray(int id)
-        {
-            if(id < 0 || id >= _publisherCount)
-                return new string[0];
+				// LINQ methods are very useful for creating new IEnumerables from others (e.g. converting a list to an array)
+        public static string[] GetPublisherActiveTopicsAsStringArray(int id) => (id < 0 || id >= _publisherCount) ? new string[0] : _topicList.Where(topic => topic.ID == id).Select(topic => topic.Name).ToArray();
 
-            var publisherTopics = new List<String>();
-
-            foreach (var topic in _topicList)
-            {
-                if(topic.ID == id)
-                    publisherTopics.Add(topic.Name);
-            }
-
-            return publisherTopics.ToArray();
-        }
-
-        public static string[] GetSubscriberActiveTopicsAsStringArray(int id)
-        {
-            try
-            {
-                var subscriber = GetSubscriberById(id);
-                var subscribedTopics = new List<String>();
-
-                foreach (var topic in _topicList)
-                {
-                    if (topic.ContainsSubscriber(subscriber))
-                        subscribedTopics.Add(topic.Name);
-                }
-
-                return subscribedTopics.ToArray();
-            }
-            catch (ArgumentNullException exp)
-            {
-                Console.WriteLine($"[ERR] {exp.Message}");
-                return new string[0];
-            }
-        }
+				// int.TryParse would return false, so even if id was null, it wouldn't make it to this method
+        public static string[] GetSubscriberActiveTopicsAsStringArray(int id) => _topicList.Where(topic => topic.SubscriberList.Contains(GetSubscriberById(id))).Select(topic => topic.Name).ToArray();
 
         public static bool RemoveAllTopicsOwnedBySubscriber(int id)
         {
-            for (var k = _topicList.Count - 1; k >= 0; k--)
-            {
-                var topic = _topicList[k];
-                if (topic.ID == id)
-                    _topicList.RemoveAt(k);
-            }
-
+						_topicList.RemoveAll(topic => topic.ID == id);
             return true;
         }
 
+				// Why is this method async if you're not going to await anything? The async portion will run, but the program execution won't wait until it's finished if you don't await it
         public static async Task PeriodicallyRemoveInactiveSubscribersTask(int delayInSeconds, bool writeToConsole)
         {
             while (true)
@@ -188,23 +119,11 @@ namespace Broker
             }
         }
 
-        private static Topic GetTopicFromString(string topicName)
-        {
-            foreach (var topic in _topicList)
-            {
-                if (topic.Name == topicName)
-                    return topic;
-            }
+				// list.First will either return the first instance found, or throw an exception if it doesn't find one. You could also use FirstOrDefault, which would return the default value of the type if one isn't in the list
+        private static Topic GetTopicFromString(string topicName) => _topicList.First(topic => topic.Name == topicName);
 
-            throw new ArgumentNullException("No Topic Found");
-        }
-
-        private static Subscriber GetSubscriberById(int id)
-        {
-            if (_subscriberMap.ContainsKey(id))
-                return _subscriberMap[id];
-            throw new ArgumentNullException("No Subscriber found");
-        }
+				// ArgumentNullException is thrown when the argument is null, not when you didn't find an item in your collection. If you try accessing the map directly like this, it will throw it's own exception.
+        private static Subscriber GetSubscriberById(int id) => _subscriberMap[id];
 
         private static bool DoesTopicNameExist(string topicName)
         {
@@ -213,7 +132,7 @@ namespace Broker
                 GetTopicFromString(topicName);
                 return true;
             }
-            catch (ArgumentNullException)
+            catch (InvalidOperationException)	// This is the exception thrown by the .First() method if no item matches the predicate, or if the list is empty
             {
                 return false;
             }
@@ -222,11 +141,11 @@ namespace Broker
         private static int RemoveInactiveSubscriberConnections()
         {
             var count = 0;
-            foreach (var disconnectedSubscriber in _subscriberMap.Where(entry => !entry.Value.IsSocketStillConnected()).ToList())
-            {
-                RemoveSubscriberFromMap(disconnectedSubscriber.Key);
+            _subscriberMap.Where(entry => !entry.Value.IsSocketStillConnected()).ToList().ForEach(disconnectedSubscriber =>	// I prefer the LINQ methods like this, but that's just personal preference
+						{
+                _subscriberMap.Remove(disconnectedSubscriber.Key); // You're method to remove this was redundant and unnecessary. You already have access to the map and its methods. You don't need to recreate them to use them.
                 count++;
-            }
+            });
 
             return count;
         }

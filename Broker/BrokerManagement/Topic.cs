@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net.Sockets;
+﻿using System.Collections.Generic;
 
 namespace Broker
 {
@@ -8,44 +6,32 @@ namespace Broker
     {
         public string Name { get; }
         public int ID { get; }
-        private readonly List<Subscriber> _subscriberList;
-        
-        public Topic(int ownerID, string topicName)
+				public List<Subscriber> SubscriberList { get; } = new List<Subscriber>();
+
+				public Topic(int ownerID, string topicName)
         {
             Name = topicName;
             ID = ownerID;
-            _subscriberList = new List<Subscriber>();
-        }
+				}
 
-        public void AddSubscriber(Subscriber sub)
+				// Unless there's a specific reason you want the list to be private, making it public readonly would be better in this case since these methods are redundant.
+				//	You're not doing any validation or anything that would warrant creating these extra methods. You're literally just creating methods that do what the list can already do itself.
+
+				//public void AddSubscriber( Subscriber sub ) => SubscriberList.Add(sub);
+
+				//public bool RemoveSubscriber( Subscriber sub ) => SubscriberList.Remove(sub);
+
+				//public bool ContainsSubscriber( Subscriber sub ) => SubscriberList.Contains(sub);
+
+				public bool SendMessageToSubscribers(string messageContent)
         {
-            _subscriberList.Add(sub);
-        }
-
-        public void RemoveSubscriber(Subscriber sub)
-        {
-            _subscriberList.Remove(sub);
-        }
-
-        public bool ContainsSubscriber(Subscriber sub)
-        {
-            return _subscriberList.IndexOf(sub) > -1;
-        }
-
-        public bool SendMessageToSubscribers(string messageContent)
-        {
-            try
-            {
-                foreach (var subscriber in _subscriberList)
-                    subscriber.SendMessage($"[{Name}]: {messageContent}");
-
-                return true;
-            }
-            catch (SocketException exception)
-            {
-                Console.WriteLine($"[ERR] {exception.Message}");
-                return false;
-            }
+						SubscriberList.ForEach(sub => sub.SendMessage($"[{Name}]: {messageContent}")); // I personally prefer the LINQ methods. They're a bit cleaner
+            return true;
+            //catch (SocketException exception)		// You'll never hit this catch block because you're handling the exception in your SendMessage method
+            //{
+            //    Console.WriteLine($"[ERR] {exception.Message}");
+            //    return false;
+            //}
         }
     }
 }

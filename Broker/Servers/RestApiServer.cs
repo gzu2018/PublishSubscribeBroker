@@ -20,210 +20,89 @@ namespace Broker
             RemoveAllSubscriberTopicsByIDRequest();
         }
 
-        private void EnableCors()
-        {
-            After.AddItemToEndOfPipeline((ctx) =>
-            {
-                ctx.Response.WithHeader("Access-Control-Allow-Origin", "*") // Set to allow all, change with implementation
-                    .WithHeader("Access-Control-Allow-Methods", "POST,GET,DELETE")
-                    .WithHeader("Access-Control-Allow-Headers", "Accept, Origin, Content-type, X-Requested-With")
-                    .WithHeader("Access-Control-Allow-Credentials", "true");
-            });
-        }
+				// Most of the things I noticed in this file were that you can use the expression body instead of having to do a full method body. Also, some of the methods were able to be simplified using the ternary operator ?:
 
-        private void InitializePublisherRequest()
-        {
-            Get("/initializePublisher", param => GetSuccessJSONInt(Broker.AddNewPublisher()));
-        }
+				private void EnableCors() => After.AddItemToEndOfPipeline(ctx => 
+						ctx.Response.WithHeader("Access-Control-Allow-Origin", "*") // Set to allow all, change with implementation
+								.WithHeader("Access-Control-Allow-Methods", "POST,GET,DELETE")
+								.WithHeader("Access-Control-Allow-Headers", "Accept, Origin, Content-type, X-Requested-With")
+								.WithHeader("Access-Control-Allow-Credentials", "true"));
 
-        private void CreateTopicRequest()
-        {
-            Post("/createTopic", param =>
-            {
-                var publisherIDString = GetQueryValueFromKey("id");
-                var topicName = GetQueryValueFromKey("topicName");
+				private void InitializePublisherRequest() => Get("/initializePublisher", param => GetSuccessJSONInt(Broker.AddNewPublisher()));
 
-                int publisherID;
-                if (int.TryParse(publisherIDString, out publisherID))
-                {
-                    if (topicName.Length > 0 && Broker.AddTopic(publisherID, topicName))
-                    {
-                        return GetSuccessJSONMessage($"Topic {topicName} successfully added");
-                    }
-                }
+				private void CreateTopicRequest() => Post("/createTopic", param => {
+						var topicName = GetQueryValueFromKey("topicName");
 
-                return GetFailureJSONMessage($"Topic {topicName} could not be added");
-            });
-        }
+						return (int.TryParse(GetQueryValueFromKey("id"), out var publisherID) && topicName.Length > 0 && Broker.AddTopic(publisherID, topicName))
+								? GetSuccessJSONMessage($"Topic {topicName} successfully added")
+								: GetFailureJSONMessage($"Topic {topicName} could not be added");
+				});
 
-        private void RemoveTopicRequest()
-        {
-            Post("/deleteTopic", param =>
-            {
-                var publisherIDString = GetQueryValueFromKey("id");
-                var topicName = GetQueryValueFromKey("topicName");
+				private void RemoveTopicRequest() => Post("/deleteTopic", param => {
+						var topicName = GetQueryValueFromKey("topicName");
 
-                int publisherID;
-                if (int.TryParse(publisherIDString, out publisherID))
-                {
-                    if (topicName.Length > 0 && Broker.RemoveTopic(publisherID, topicName))
-                    {
-                        return GetSuccessJSONMessage($"Topic {topicName} successfully removed");
-                    }
-                }
+						return (int.TryParse(GetQueryValueFromKey("id"), out var publisherID) && topicName.Length > 0 && Broker.RemoveTopic(publisherID, topicName))
+								? GetSuccessJSONMessage($"Topic {topicName} successfully removed")
+								: GetFailureJSONMessage($"Topic {topicName} could not be removed");
+				});
 
-                return GetFailureJSONMessage($"Topic {topicName} could not be removed");
-            });
-        }
+				private void GetAllTopicNamesRequest() => Get("/getAllTopicNames", param => GetSuccessJSONArray(Broker.GetTopicNamesAsStringArray()));
 
-        private void GetAllTopicNamesRequest()
-        {
-            Get("/getAllTopicNames", param => GetSuccessJSONArray(Broker.GetTopicNamesAsStringArray()));
-        }
+				private void PublisherPublishTopicRequest() => Post("/publishMessage", param => {
+						var topicName = GetQueryValueFromKey("topicName");
+						var messageContent = GetQueryValueFromKey("messageContent");
 
-        private void PublisherPublishTopicRequest()
-        {
-            Post("/publishMessage", param =>
-            {
-                var publisherIDString = GetQueryValueFromKey("id");
-                var topicName = GetQueryValueFromKey("topicName");
-                var messageContent = GetQueryValueFromKey("messageContent");
+						return (int.TryParse(GetQueryValueFromKey("id"), out var publisherID) && topicName.Length > 0 && messageContent.Length > 0 && Broker.SendMessage(publisherID, topicName, messageContent))
+								? GetSuccessJSONMessage($"Message to topic {topicName} was successfully published")
+								: GetFailureJSONMessage($"Message to topic {topicName} could not be published");
+				});
 
-                int publisherID;
-                if (int.TryParse(publisherIDString, out publisherID))
-                {
-                    if (topicName.Length > 0 && messageContent.Length > 0 &&
-                        Broker.SendMessage(publisherID, topicName, messageContent))
-                    {
-                        return GetSuccessJSONMessage($"Message to topic {topicName} was successfully published");
-                    }
-                }
+				private void SubscriberSubscribeToTopicRequest() => Post("/subscribeToTopic", param => {
+						var subscriberIDString = GetQueryValueFromKey("id");
+						var topicName = GetQueryValueFromKey("topicName");
 
-                return GetFailureJSONMessage($"Message to topic {topicName} could not be published");
-            });
-        }
+						return (int.TryParse(subscriberIDString, out var subscriberID) && subscriberID >= 0 && topicName.Length > 0 && Broker.AddSubscriberToTopic(subscriberID, topicName))
+								? GetSuccessJSONMessage($"Subscriber {subscriberID} successfully added to topic {topicName}")
+								: GetFailureJSONMessage($"Subscriber {subscriberIDString} was not added to the topic {topicName}. (Perhaps an invalid ID?)");
+				});
 
-        private void SubscriberSubscribeToTopicRequest()
-        {
-            Post("/subscribeToTopic", param =>
-            {
-                var subscriberIDString = GetQueryValueFromKey("id");
-                var topicName = GetQueryValueFromKey("topicName");
+				private void SubscriberUnsubscribeToTopicRequest() => Post("/unsubscribeToTopic", param => {
+						var subscriberIDString = GetQueryValueFromKey("id");
+						var topicName = GetQueryValueFromKey("topicName");
 
-                int subscriberID;
-                if (int.TryParse(subscriberIDString, out subscriberID))
-                {
-                    if (subscriberID >= 0 && topicName.Length > 0 && Broker.AddSubscriberToTopic(subscriberID, topicName))
-                    {
-                        return GetSuccessJSONMessage($"Subscriber {subscriberID} successfully added to topic {topicName}");
-                    }
-                }
+						return (int.TryParse(subscriberIDString, out var subscriberID) && subscriberID >= 0 && topicName.Length > 0 && Broker.RemoveSubscriberFromTopic(subscriberID, topicName))
+								? GetSuccessJSONMessage($"Subscriber {subscriberID} successfully removed from topic {topicName}")
+								: GetFailureJSONMessage($"Subscriber {subscriberIDString} was not removed from the topic {topicName}. (Perhaps an invalid ID?)");
+				});
 
-                return GetFailureJSONMessage($"Subscriber {subscriberIDString} was not added to the topic {topicName}. (Perhaps an invalid ID?)");
-            });
-        }
+				private void GetPublisherActiveTopicsRequest() => Get("/getPublisherActiveTopics", param =>
+						int.TryParse(GetQueryValueFromKey("id"), out var publisherID)
+								? GetSuccessJSONArray(Broker.GetPublisherActiveTopicsAsStringArray(publisherID))
+								: GetFailureJSONMessage("Publisher ID entered is not a valid integer"));
 
-        private void SubscriberUnsubscribeToTopicRequest()
-        {
-            Post("/unsubscribeToTopic", param =>
-            {
-                var subscriberIDString = GetQueryValueFromKey("id");
-                var topicName = GetQueryValueFromKey("topicName");
+				private void GetSubscriberActiveTopicsRequest() => Get("/getSubscriberActiveTopics", param =>
+						int.TryParse(GetQueryValueFromKey("id"), out var subscriberID)
+								? GetSuccessJSONArray(Broker.GetSubscriberActiveTopicsAsStringArray(subscriberID))
+								: GetFailureJSONMessage("Subscriber ID entered is not a valid integer"));
 
-                int subscriberID;
-                if (int.TryParse(subscriberIDString, out subscriberID))
-                {
-                    if (subscriberID >= 0 && topicName.Length > 0 && Broker.RemoveSubscriberFromTopic(subscriberID, topicName))
-                    {
-                        return GetSuccessJSONMessage($"Subscriber {subscriberID} successfully removed from topic {topicName}");
-                    }
-                }
+				private void RemoveAllSubscriberTopicsByIDRequest() => Post("/removeAllSubscriberActiveTopics", param =>
+						int.TryParse(GetQueryValueFromKey("id"), out var publisherID)	// shouldn't this variable be subscriberID?
+								? Broker.RemoveAllTopicsOwnedBySubscriber(publisherID)	// this method will ALWAYS return true
+										? GetSuccessJSONMessage($"All topics owned by publisher {publisherID} successfully removed")
+										: GetFailureJSONMessage($"Topics owned by publisher {publisherID} could not be removed. (Perhaps invalid ID?)")	// You'll never get here
+								: GetFailureJSONMessage("Publisher ID entered is not a valid integer"));
 
-                return GetFailureJSONMessage($"Subscriber {subscriberIDString} was not removed from the topic {topicName}. (Perhaps an invalid ID?)");
-            });
-        }
+				private string GetSuccessJSONMessage(string successMsg) => GetSerializedJsonString(true, successMsg);
 
-        private void GetPublisherActiveTopicsRequest()
-        {
-            Get("/getPublisherActiveTopics", param =>
-            {
-                var publisherIDString = GetQueryValueFromKey("id");
+        private string GetFailureJSONMessage(string errorMsg) => GetSerializedJsonString(false, errorMsg);
 
-                int publisherID;
-                if (int.TryParse(publisherIDString, out publisherID))
-                {
-                    return GetSuccessJSONArray(Broker.GetPublisherActiveTopicsAsStringArray(publisherID));
-                }
+        private string GetSuccessJSONArray(string[] array) => GetSerializedJsonString(true, array);
 
-                return GetFailureJSONMessage("Publisher ID entered is not a valid integer");
-            });
-        }
+				private string GetSuccessJSONInt( int integer ) => GetSerializedJsonString(true, integer);
 
-        private void GetSubscriberActiveTopicsRequest()
-        {
-            Get("/getSubscriberActiveTopics", param =>
-            {
-                var subscriberIDString = GetQueryValueFromKey("id");
+				// This method can act as a factory of sorts that creates your serialized strings. Now you can add multiple success and failure methods without having to re-write the logic to create the serialized string
+				private string GetSerializedJsonString(bool success, dynamic message) => JsonConvert.SerializeObject(new { success, message });
 
-                int subscriberID;
-                if (int.TryParse(subscriberIDString, out subscriberID))
-                {
-                    return GetSuccessJSONArray(Broker.GetSubscriberActiveTopicsAsStringArray(subscriberID));
-                }
-
-                return GetFailureJSONMessage("Subscriber ID entered is not a valid integer");
-            });
-        }
-
-        private void RemoveAllSubscriberTopicsByIDRequest()
-        {
-            Post("/removeAllSubscriberActiveTopics", param =>
-            {
-                var publisherIDString = GetQueryValueFromKey("id");
-
-                int publisherID;
-                if (int.TryParse(publisherIDString, out publisherID))
-                {
-                    if (Broker.RemoveAllTopicsOwnedBySubscriber(publisherID))
-                    {
-                      return GetSuccessJSONMessage($"All topics owned by publisher {publisherID} successfully removed");
-                    }
-
-                    return GetFailureJSONMessage(
-                        $"Topics owned by publisher {publisherID} could not be removed. (Perhaps invalid ID?)");
-                }
-
-                return GetFailureJSONMessage("Publisher ID entered is not a valid integer");
-            });
-        }
-
-        private string GetSuccessJSONMessage(string successMsg)
-        {
-            var result = new { success = true, message = successMsg };
-            return JsonConvert.SerializeObject(result);
-        }
-
-        private string GetFailureJSONMessage(string errorMsg)
-        {
-            var result = new { success = false, message = errorMsg };
-            return JsonConvert.SerializeObject(result);
-        }
-
-        private string GetSuccessJSONArray(string[] array)
-        {
-            var result = new { success = true, message = array };
-            return JsonConvert.SerializeObject(result);
-        }
-
-        private string GetSuccessJSONInt(int integer)
-        {
-            var result = new { success = true, message = integer };
-            return JsonConvert.SerializeObject(result);
-        }
-
-        private string GetQueryValueFromKey(string key)
-        {
-            return (string)this.Request.Query[key];
-        }
-    }
+				private string GetQueryValueFromKey( string key ) => (string)Request.Query[key];
+		}
 }

@@ -66,16 +66,8 @@ namespace Broker
             socket.Send(System.Text.Encoding.UTF8.GetBytes(response));
         }
 
-        private string AcceptKey(ref string key)
-        {
-            var longKey = key + _guid;
-            var hashBytes = ComputeHash(longKey);
-            return Convert.ToBase64String(hashBytes);
-        }
+        private string AcceptKey(ref string key) => Convert.ToBase64String(ComputeHash(key + _guid));	//If you don't need all the intermediary pieces, you can opt to one-line things like this
 
-        private byte[] ComputeHash(string str)
-        {
-            return _sha1.ComputeHash(System.Text.Encoding.ASCII.GetBytes(str));
-        }
-    }
+				private byte[] ComputeHash( string str ) => _sha1.ComputeHash(System.Text.Encoding.ASCII.GetBytes(str));
+	}
 }
